@@ -7,6 +7,7 @@ import pickle
 import re
 import datetime
 import logging
+import sys
 
 
 # Logging configuration:
@@ -14,6 +15,17 @@ logging.basicConfig(
     level=logging.INFO,
     filename='funda_scraper.log',
     format='%(asctime)s | %(levelname)s - %(message)s')
+
+
+# Get argument values:
+if len(sys.argv) < 2:
+    print("Arguments missing. Please indicate which mode to use.")
+    return
+
+mode = sys.argv[1]
+## Modes: 0: regular scraping
+##        1: update sold properties
+
 
 # Define a class to hold the extracted data
 class PropertyListing:
@@ -70,11 +82,19 @@ results_array = set()
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-alkmaar,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
 #         ]
-base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="30"&search_result='
+if mode == 1: # update sold properties
+    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"unavailable"%5D&search_result='
+else:
+    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="30"&search_result='
 
 try:
-    print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
-    logging.info(f'Funda scraping started (URL: {base_url})')
+    if mode == 1:
+        print(f"Sold properties update started at {datetime.datetime.now()}. URL: {base_url}")
+        logging.info(f'Funda Sold properties update started (URL: {base_url})')
+    else:
+        print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
+        logging.info(f'Funda scraping started (URL: {base_url})')
+
     page_number = 0
     max_pages = 666
     carry_on = True
@@ -180,14 +200,14 @@ try:
                 ))
             time.sleep(10)
 
-    logging.info(f'Scraping completed. {page_number} result page(s) processed.)')
+    logging.info(f'Operation completed. {page_number} result page(s) processed.)')
 
 except Exception as e:
-    print(f"Error during scraping!")
-    logging.error(f'Error during scraping: {e}')
+    print(f"Error during operation!")
+    logging.error(f'Error during operation: {e}')
 
     
-print(f"Scraping ended at {datetime.datetime.now()}")
+print(f"Operation ended at {datetime.datetime.now()}")
 
 
 with open('scraped_data.pkl', 'wb') as file:
@@ -252,8 +272,8 @@ try:
                       property_obj.name,
                       property_obj.city))
 
-        # if it is a new property:
-        else:    
+        # if it is a new property and the mode is not to update sold properties:
+        else if mode != 1:
             cursor.execute('''
                     INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
