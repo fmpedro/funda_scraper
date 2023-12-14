@@ -20,7 +20,7 @@ logging.basicConfig(
 # Get argument values:
 if len(sys.argv) < 2:
     print("Arguments missing. Please indicate which mode to use.")
-    return
+    sys.exit()
 
 mode = sys.argv[1]
 ## Modes: 0: regular scraping
@@ -56,7 +56,7 @@ class PropertyListing:
         return hash((self.name, self.city))
 
 
-def scrape_page(url, timeout=60):
+def scrape_page(url, timeout=30):
     user_agent = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'''
     headers = {
         "User-Agent": user_agent
@@ -82,13 +82,13 @@ results_array = set()
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-alkmaar,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
 #         ]
-if mode == 1: # update sold properties
+if mode == '1': # update sold properties
     base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"unavailable"%5D&search_result='
 else:
     base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="30"&search_result='
 
 try:
-    if mode == 1:
+    if mode == '1':
         print(f"Sold properties update started at {datetime.datetime.now()}. URL: {base_url}")
         logging.info(f'Funda Sold properties update started (URL: {base_url})')
     else:
@@ -246,8 +246,8 @@ try:
     ''')
 
     # Get list of IDs of properties in the database:
-    cursor.execute("SELECT name || ',' || city AS name_city_key FROM scraped_properties")
-    name_city_key_list = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT name || ',' || city AS name_city_key, sold FROM scraped_properties")
+    name_city_list = {row[0]: row[1] for row in cursor.fetchall()}
 
     # Insert objects into the table
     for property_obj in results_array:
@@ -258,7 +258,7 @@ try:
             sold = False
  
         # if property is already in the database:
-        if key in name_city_key_list:
+        if key in name_city_list.keys() && name_city_list[key] == 0:
             cursor.execute('''
                 UPDATE scraped_properties SET price=?, area=?, num_of_rooms=?, energy_rating=?, url=?, tags=?, sold=?, mutation_date=? WHERE name=? AND city=?
                 ''', (property_obj.price,
@@ -273,7 +273,7 @@ try:
                       property_obj.city))
 
         # if it is a new property and the mode is not to update sold properties:
-        else if mode != 1:
+        elif mode != 1:
             cursor.execute('''
                     INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
