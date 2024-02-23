@@ -83,9 +83,9 @@ results_array = set()
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
 #         ]
 if mode == '1': # update sold properties
-    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"unavailable"%5D&search_result='
+    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"unavailable"%5D&search_result='
 else:
-    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"amsterdam,30km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="30"&search_result='
+    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="5"&search_result='
 
 try:
     if mode == '1':
@@ -258,7 +258,7 @@ try:
             sold = False
  
         # if property is already in the database:
-        if key in name_city_list.keys() && name_city_list[key] == 0:
+        if key in name_city_list.keys() and name_city_list[key] == 0:
             cursor.execute('''
                 UPDATE scraped_properties SET price=?, area=?, num_of_rooms=?, energy_rating=?, url=?, tags=?, sold=?, mutation_date=? WHERE name=? AND city=?
                 ''', (property_obj.price,
