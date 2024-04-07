@@ -8,6 +8,7 @@ import re
 import datetime
 import logging
 import sys
+import pandas as pd
 
 
 # Logging configuration:
@@ -17,24 +18,15 @@ logging.basicConfig(
     format='%(asctime)s | %(levelname)s - %(message)s')
 
 
-# Get argument values:
-if len(sys.argv) < 2:
-    print("Arguments missing. Please indicate which mode to use.")
-    sys.exit()
-
-mode = sys.argv[1]
-## Modes: 0: regular scraping
-##        1: update sold properties
-
-
 # Define a class to hold the extracted data
 class PropertyListing:
-    def __init__(self, name, type, postal_code_number, postal_code_letters, city, price, area, num_of_rooms, energy_rating, features, estate_agent, url, tags):
+    def __init__(self, name, type, postal_code_number, postal_code_letters, city, province, price, area, num_of_rooms, energy_rating, features, estate_agent, url, tags):
         self.name = name
         self.type = type
         self.postal_code_number = postal_code_number
         self.postal_code_letters = postal_code_letters
         self.city = city
+        self.province = province
         self.price = price
         self.features_array = features
         self.area = area
@@ -68,8 +60,15 @@ def scrape_page(url, timeout=30):
     soup = bs(response.text, "html.parser")
     return soup.find_all("div", {"data-test-id": "search-result-item"})
 
+        
+def get_province(zipcode, ref_data):
+    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name'][0]
+    return province
+
 
 results_array = set()
+
+ref_data = pd.read_csv('georef-netherlands-postcode-pc4.csv', sep='\t')
 
 
 # development_mode = False
@@ -82,18 +81,12 @@ results_array = set()
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-alkmaar,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
 #         ]
-if mode == '1': # update sold properties
-    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"unavailable"%5D&search_result='
-else:
-    base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="5"&search_result='
+base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="5"&search_result='
+    
 
 try:
-    if mode == '1':
-        print(f"Sold properties update started at {datetime.datetime.now()}. URL: {base_url}")
-        logging.info(f'Funda Sold properties update started (URL: {base_url})')
-    else:
-        print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
-        logging.info(f'Funda scraping started (URL: {base_url})')
+    print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
+    logging.info(f'Funda scraping started (URL: {base_url})')
 
     page_number = 0
     max_pages = 666
@@ -189,6 +182,7 @@ try:
                     postal_code_number=postal_code_number,
                     postal_code_letters=postal_code_letters,
                     city=city,
+                    province=get_province(postal_code_number, ref_data),
                     price=price,
                     area=area,
                     num_of_rooms=num_of_rooms,
@@ -232,6 +226,7 @@ try:
             postal_code_number TEXT,
             postal_code_letters TEXT,
             city TEXT,
+            province TEXT,
             price REAL,
             area REAL,
             num_of_rooms INTEGER,
@@ -272,16 +267,17 @@ try:
                       property_obj.name,
                       property_obj.city))
 
-        # if it is a new property and the mode is not to update sold properties:
-        elif mode != 1:
+        # if it is a new property:
+        else:
             cursor.execute('''
-                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (property_obj.name,
                       property_obj.type,
                       property_obj.postal_code_number,
                       property_obj.postal_code_letters,
                       property_obj.city,
+                      property_obj.province,
                       property_obj.price,
                       property_obj.area,
                       property_obj.num_of_rooms,
