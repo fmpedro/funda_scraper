@@ -198,7 +198,7 @@ try:
 
 except Exception as e:
     print(f"Error during operation!")
-    logging.error(f'Error during operation: {e}')
+    logging.error(f'Error during operation on page {page_number}: {e}')
 
     
 print(f"Operation ended at {datetime.datetime.now()}")

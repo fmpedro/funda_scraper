@@ -53,24 +53,29 @@ except Exception as e:
     print(f"Error during database querying.")
     logging.error(f'Error during database querying: {e}')
 
-url_list = url_list[0:5]
-
 
 # Scrape each property's url and check for status. If sold, update database
+processed_records = 0
+error_records = 0
+
 for property_id, property_url in url_list:
     try:
         status = get_listing_status(property_url)
-        print(property_url, status)
-        if 'Verkocht' in status:
+        if status == None:
+            tag = 'Property Removed'
+        else:
+            tag = status
+
+        if status == None or 'Verkocht' in status:
             cursor.execute('''
                 UPDATE scraped_properties SET sold=?, tags=? WHERE id=?
                 ''', (True,
-                      status,
+                      tag,
                       property_id))
+        processed_records += 1
 
-    except Exception as e:
-        print(f"Error during scraping/update of property with id: {property_id}.")
-        logging.error(f'Error during scraping/update of property with id: {property_id}: {e}')
+    except:
+        error_records += 1
 
     time.sleep(5)
 
@@ -79,8 +84,8 @@ try:
     conn.commit()
     conn.close()
 
-    print(f"Database updated at {datetime.datetime.now()}")
-    logging.info(f'Database updated.')
+    print(f"Database updated at {datetime.datetime.now()}. {processed_records} records processed. {error_records} errors.")
+    logging.info(f'Database updated. {processed_records} records processed. {error_records} errors.')
 
 except Exception as e:
     print(f"Error during database update!")
