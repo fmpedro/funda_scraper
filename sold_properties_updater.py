@@ -52,6 +52,7 @@ try:
 except Exception as e:
     print(f"Error during database querying.")
     logging.error(f'Error during database querying: {e}')
+    sys.exit(1)
 
 
 # Scrape each property's url and check for status. If sold, update database
@@ -72,6 +73,7 @@ for property_id, property_url in url_list:
                 ''', (True,
                       tag,
                       property_id))
+            conn.commit()
         processed_records += 1
 
     except:
@@ -79,14 +81,13 @@ for property_id, property_url in url_list:
 
     time.sleep(5)
 
-# Commit changes and close the connection
+# Close the connection
 try:
-    conn.commit()
     conn.close()
 
     print(f"Database updated at {datetime.datetime.now()}. {processed_records} records processed. {error_records} errors.")
     logging.info(f'Database updated. {processed_records} records processed. {error_records} errors.')
 
 except Exception as e:
-    print(f"Error during database update!")
-    logging.error(f'Error during database update: {e}')
+    print(f"Error during database update! {processed_records} records processed. {error_records} errors.")
+    logging.error(f'Error during database update: {e}. \n{processed_records} records processed. {error_records} errors.')

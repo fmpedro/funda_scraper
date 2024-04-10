@@ -62,7 +62,7 @@ def scrape_page(url, timeout=30):
 
         
 def get_province(zipcode, ref_data):
-    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name'][0]
+    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name'].values[0]
     return province
 
 
@@ -97,6 +97,7 @@ try:
         url = base_url + str(page_number)
         
         search_result_items = scrape_page(url)
+
         if search_result_items == None:
             continue
         
@@ -308,5 +309,9 @@ try:
     logging.info(f'Database updated.')
 
 except Exception as e:
-    print(f"Error during database update!")
+    try:
+        conn.close()
+    except:
+        pass
+    print(f"Error during database update: {e}")
     logging.error(f'Error during database update: {e}')
