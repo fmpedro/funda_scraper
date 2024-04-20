@@ -62,8 +62,11 @@ def scrape_page(url, timeout=30):
 
         
 def get_province(zipcode, ref_data):
-    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name'].values[0]
-    return province
+    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name']
+    if len(province) == 0:
+        return None
+    else:
+        return province.values[0]
 
 
 results_array = set()
@@ -142,9 +145,12 @@ try:
                 features = [sub_item.get_text().strip() for sub_item in aditional_sub_items]
                 
                 # area:
-                if "m²" in features[0]:
-                    area = float(features[0].replace(" m²", ""))
-                else:
+                try:
+                    if "m²" in features[0]:
+                        area = float(features[0].replace(" m²", ""))
+                    else:
+                        area = None
+                except:
                     area = None
                 
                 # number of rooms:
@@ -199,10 +205,12 @@ try:
 
 except Exception as e:
     print(f"Error during operation!")
+    print(item, property_name, property_url, postal_code_city, price_sale_array, url_link, additional_info, aditional_sub_items, features, property_estate_agent, li_elements)
     logging.error(f'Error during operation on page {page_number}: {e}')
 
     
 print(f"Operation ended at {datetime.datetime.now()}")
+logging.info("Scrapping ended.")
 
 
 with open('scraped_data.pkl', 'wb') as file:
