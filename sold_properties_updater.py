@@ -3,38 +3,51 @@ from requests.exceptions import Timeout
 import time
 import sqlite3
 from bs4 import BeautifulSoup as bs
-import pickle
-import re
 import datetime
 import logging
 import sys
-import pandas as pd
 
 
 # Logging configuration:
 logging.basicConfig(
     level=logging.INFO,
     filename='funda_scraper.log',
-    format='%(asctime)s | %(levelname)s - %(message)s')
+    format='%(asctime)s | sold_properties_updater |  %(levelname)s - %(message)s')
+
+errors_filename = 'errors.txt'
 
 
-def get_listing_status(listing_url):
+def get_listing_soup(listing_url):
     user_agent = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'''
     headers = {
         "User-Agent": user_agent
     }
     response = requests.get(listing_url, headers = headers)
-    soup = bs(response.text, "html.parser")
+    if '/zoeken/' in response.url:
+        return None
+    else:
+        return bs(response.text, "html.parser")
+
+
+def get_listing_status(soup):
     status = soup.find('dt', string='Status')
     if status:
-        return status.find_next('dd').text.strip()
+        status = status.find_next('dd').text.strip()
     else:
-        return None
-
-
-def get_province(zipcode, ref_data):
-    province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name'][0]
-    return province
+        status = None
+    labels = soup.find("div", class_ = "object-header__labels")
+    if labels:
+        li_elements = soup.find("div", class_ = "object-header__labels").find_all('li')
+        tags = ", ".join([li.get_text(strip=True) for li in li_elements])
+    else:
+        tags = ''
+    blikvanger = soup.find("span", {"class": "label-blikvanger"})
+    if blikvanger and 'Verkocht' not in status:
+        if tags == '':
+            tags = blikvanger.text.strip()
+        else:
+            tags = blikvanger.text.strip() + ', ' + tags
+    return (status, tags)
 
 
 # Connect to the database and get urls for properties marked as not sold
@@ -57,37 +70,46 @@ except Exception as e:
 
 # Scrape each property's url and check for status. If sold, update database
 processed_records = 0
-error_records = 0
+error_records = []
 
 for property_id, property_url in url_list:
     try:
-        status = get_listing_status(property_url)
-        if status == None:
-            tag = 'Property Removed'
+        today_string = datetime.date.today().strftime('%Y-%m-%d')
+        soup = get_listing_soup(property_url)
+        if soup == None:
+            sold = True
+            tags = 'Property Removed'
         else:
-            tag = status
-
-        if status == None or 'Verkocht' in status:
-            cursor.execute('''
-                UPDATE scraped_properties SET sold=?, tags=? WHERE id=?
-                ''', (True,
-                      tag,
-                      property_id))
-            conn.commit()
+            status, tags = get_listing_status(soup)
+            if status == None or 'Verkocht' in status:
+                sold = True
+            else:
+                sold = False
+        
+        cursor.execute('''
+            UPDATE scraped_properties SET sold=?, tags=?,  mutation_date=? WHERE id=?
+            ''', (sold,
+                  tags,
+                  today_string,
+                  property_id))
+        conn.commit()
         processed_records += 1
 
     except:
-        error_records += 1
+        error_records.append(f"{property_id} | {property_url}")
 
-    time.sleep(5)
+    time.sleep(1)
 
 # Close the connection
 try:
     conn.close()
+    with open(errors_filename, 'w') as f:
+        for record in error_records:
+            f.write(f"{record}\n")
 
-    print(f"Database updated at {datetime.datetime.now()}. {processed_records} records processed. {error_records} errors.")
-    logging.info(f'Database updated. {processed_records} records processed. {error_records} errors.')
+    print(f"Database updated at {datetime.datetime.now()}. {processed_records} records processed. {len(error_records)} errors.")
+    logging.info(f'Database updated. {processed_records} records processed. {len(error_records)} errors.')
 
 except Exception as e:
-    print(f"Error during database update! {processed_records} records processed. {error_records} errors.")
-    logging.error(f'Error during database update: {e}. \n{processed_records} records processed. {error_records} errors.')
+    print(f"Error during database update! {processed_records} records processed. {len(error_records)} errors.")
+    logging.error(f'Error during database update: {e}. \n{processed_records} records processed. {len(error_records)} errors.')

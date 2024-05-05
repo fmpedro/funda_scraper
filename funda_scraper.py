@@ -15,7 +15,7 @@ import pandas as pd
 logging.basicConfig(
     level=logging.INFO,
     filename='funda_scraper.log',
-    format='%(asctime)s | %(levelname)s - %(message)s')
+    format='%(asctime)s | funda_scraper | %(levelname)s - %(message)s')
 
 
 # Define a class to hold the extracted data
@@ -180,7 +180,7 @@ try:
                 # tags:
                 ul_element = item.find('ul', class_='absolute left-2 top-2 flex w-56 flex-wrap')
                 li_elements = ul_element.find_all('li')
-                tags = ",".join([li.get_text(strip=True) for li in li_elements])
+                tags = ", ".join([li.get_text(strip=True) for li in li_elements])
 
                 # append property listing to results array:
                 results_array.add(PropertyListing(
@@ -297,17 +297,6 @@ try:
                       sold,
                       today_string,
                       today_string))
-
-    # # Remove duplicate entries from the database
-    # cursor.execute('''
-    #     DELETE FROM scraped_properties
-    #     WHERE id > (
-    #             SELECT MIN(id) FROM scraped_properties sp2
-    #             WHERE scraped_properties.name = sp2.name
-    #             AND scraped_properties.city = sp2.city
-    #     )
-    #     ''')
-
 
     # Commit changes and close the connection
     conn.commit()
