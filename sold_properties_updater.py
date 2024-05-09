@@ -95,8 +95,8 @@ for property_id, property_url in url_list:
         conn.commit()
         processed_records += 1
 
-    except:
-        error_records.append(f"{property_id} | {property_url}")
+    except Exception as e:
+        error_records.append(f"{property_id} | {property_url} | {e}")
 
     time.sleep(1)
 
