@@ -140,7 +140,7 @@ try:
                 url_link = item.find("a")["href"].strip()
                 
                 # additional info:
-                additional_info = item.find("ul", {"class": "mt-1 flex h-6 min-w-0 flex-wrap overflow-hidden"})
+                additional_info = item.find("ul", {"class": "mt-1 flex h-6 min-w-0 flex-wrap space-x-3 overflow-hidden sm:space-x-4"})
                 aditional_sub_items = additional_info.find_all("li")
                 features = [sub_item.get_text().strip() for sub_item in aditional_sub_items]
                 
@@ -205,7 +205,7 @@ try:
 
 except Exception as e:
     print(f"Error during operation!")
-    print(item, property_name, property_url, postal_code_city, price_sale_array, url_link, additional_info, aditional_sub_items, features, property_estate_agent, li_elements)
+    print(page_number, property_name, property_url, item)
     logging.error(f'Error during operation on page {page_number}: {e}')
 
     
