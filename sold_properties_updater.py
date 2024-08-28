@@ -16,6 +16,12 @@ logging.basicConfig(
 
 errors_filename = 'errors.txt'
 
+# Check if specific city was defined:
+if len(sys.argv) < 2:
+    additional_query = ""
+else:
+    additional_query = " AND city = '" + sys.argv[1] + "'"
+
 
 def get_listing_soup(listing_url):
     user_agent = '''Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'''
@@ -59,7 +65,7 @@ try:
     cursor = conn.cursor()
 
     # Get list of URLs of not sold properties:
-    cursor.execute("SELECT id, url FROM scraped_properties WHERE sold = 0")
+    cursor.execute("SELECT id, url FROM scraped_properties WHERE sold = 0" + additional_query)
     url_list = cursor.fetchall()
 
 except Exception as e:

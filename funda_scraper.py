@@ -20,13 +20,14 @@ logging.basicConfig(
 
 # Define a class to hold the extracted data
 class PropertyListing:
-    def __init__(self, name, type, postal_code_number, postal_code_letters, city, province, price, area, num_of_rooms, energy_rating, features, estate_agent, url, tags):
+    def __init__(self, name, type, postal_code_number, postal_code_letters, city, province, gemeente, price, area, num_of_rooms, energy_rating, features, estate_agent, url, tags):
         self.name = name
         self.type = type
         self.postal_code_number = postal_code_number
         self.postal_code_letters = postal_code_letters
         self.city = city
         self.province = province
+        self.gemeente = gemeente
         self.price = price
         self.features_array = features
         self.area = area
@@ -61,12 +62,19 @@ def scrape_page(url, timeout=30):
     return soup.find_all("div", {"data-test-id": "search-result-item"})
 
         
-def get_province(zipcode, ref_data):
+def get_zipcode_info(zipcode, ref_data):
     province = ref_data[ref_data.PC4 == int(zipcode)]['Provincie name']
+    gemeente = ref_data[ref_data.PC4 == int(zipcode)]['Gemeente name']
     if len(province) == 0:
-        return None
+        province = None
     else:
-        return province.values[0]
+        province = province.values[0]
+    if len(gemeente) == 0:
+        gemeente = None
+    else:
+        gemeente = gemeente.values[0]
+    return {"province": province,
+            "gemeente": gemeente}
 
 
 results_array = set()
@@ -189,7 +197,8 @@ try:
                     postal_code_number=postal_code_number,
                     postal_code_letters=postal_code_letters,
                     city=city,
-                    province=get_province(postal_code_number, ref_data),
+                    province=get_zipcode_info(postal_code_number, ref_data)['province'],
+                    gemeente=get_zipcode_info(postal_code_number, ref_data)['gemeente'],
                     price=price,
                     area=area,
                     num_of_rooms=num_of_rooms,
@@ -201,18 +210,15 @@ try:
                 ))
             time.sleep(10)
 
-    logging.info(f'Operation completed. {page_number} result page(s) processed.)')
+    logging.info(f'Scraping completed. {page_number} result page(s) processed.)')
 
 except Exception as e:
     print(f"Error during operation!")
     print(page_number, property_name, property_url, item)
     logging.error(f'Error during operation on page {page_number}: {e}')
 
-    
-print(f"Operation ended at {datetime.datetime.now()}")
-logging.info("Scrapping ended.")
 
-
+# Backup scraped data
 with open('scraped_data.pkl', 'wb') as file:
 	pickle.dump(results_array, file)
 
@@ -236,6 +242,7 @@ try:
             postal_code_letters TEXT,
             city TEXT,
             province TEXT,
+            gemeente TEXT,
             price REAL,
             area REAL,
             num_of_rooms INTEGER,
@@ -279,14 +286,15 @@ try:
         # if it is a new property:
         else:
             cursor.execute('''
-                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, gemeente, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (property_obj.name,
                       property_obj.type,
                       property_obj.postal_code_number,
                       property_obj.postal_code_letters,
                       property_obj.city,
                       property_obj.province,
+                      property_obj.gemeente,
                       property_obj.price,
                       property_obj.area,
                       property_obj.num_of_rooms,
