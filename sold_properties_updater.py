@@ -20,7 +20,7 @@ errors_filename = 'errors.txt'
 if len(sys.argv) < 2:
     additional_query = ""
 else:
-    additional_query = " AND city = '" + sys.argv[1] + "'"
+    additional_query = " " + sys.argv[1]
 
 
 def get_listing_soup(listing_url):
@@ -58,15 +58,15 @@ def get_listing_status(soup):
 
 # Connect to the database and get urls for properties marked as not sold
 try:
-    print(f"Sold properties update started at {datetime.datetime.now()}.")
-    logging.info(f'Funda Sold Properties update started.')
-
     conn = sqlite3.connect("funda_properties.db")
     cursor = conn.cursor()
 
     # Get list of URLs of not sold properties:
     cursor.execute("SELECT id, url FROM scraped_properties WHERE sold = 0" + additional_query)
     url_list = cursor.fetchall()
+    print(f"Sold properties update started at {datetime.datetime.now()}. Number of records to process: {len(url_list)}")
+    logging.info(f'Funda Sold Properties update started. Number of records to process: {len(url_list)}')
+
 
 except Exception as e:
     print(f"Error during database querying.")

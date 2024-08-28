@@ -93,7 +93,7 @@ ref_data = pd.read_csv('georef-netherlands-postcode-pc4.csv', sep='\t')
 #         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
 #         ]
 base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="5"&search_result='
-    
+
 
 try:
     print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
@@ -263,7 +263,7 @@ try:
     # Insert objects into the table
     for property_obj in results_array:
         key = property_obj.name + "," + property_obj.city
-        if property_obj.tags == "Verkocht":
+        if "Verkocht" in property_obj.tags:
             sold = True
         else:
             sold = False
