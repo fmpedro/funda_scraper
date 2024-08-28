@@ -263,7 +263,7 @@ try:
     # Insert objects into the table
     for property_obj in results_array:
         key = property_obj.name + "," + property_obj.city
-        if "Verkocht" in property_obj.tags:
+        if "Verkocht" in property_obj.tags or "Verhuurd" in property_obj.tags:
             sold = True
         else:
             sold = False

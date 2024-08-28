@@ -87,7 +87,7 @@ for property_id, property_url in url_list:
             tags = 'Property Removed'
         else:
             status, tags = get_listing_status(soup)
-            if status == None or 'Verkocht' in status:
+            if status == None or 'Verkocht' in status or 'Verhuurd' in status:
                 sold = True
             else:
                 sold = False
