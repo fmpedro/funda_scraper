@@ -20,7 +20,7 @@ errors_filename = 'errors.txt'
 if len(sys.argv) < 2:
     additional_query = ""
 else:
-    additional_query = " " + sys.argv[1]
+    additional_query = " AND " + sys.argv[1]
 
 
 def get_listing_soup(listing_url):
@@ -65,7 +65,7 @@ try:
     cursor.execute("SELECT id, url FROM scraped_properties WHERE sold = 0" + additional_query)
     url_list = cursor.fetchall()
     print(f"Sold properties update started at {datetime.datetime.now()}. Number of records to process: {len(url_list)}")
-    logging.info(f'Funda Sold Properties update started. Number of records to process: {len(url_list)}')
+    logging.info(f'Funda Sold Properties update started. Number of records to process: {len(url_list)} (Additional query: {additional_query})')
 
 
 except Exception as e:
@@ -80,7 +80,6 @@ error_records = []
 
 for property_id, property_url in url_list:
     try:
-        today_string = datetime.date.today().strftime('%Y-%m-%d')
         soup = get_listing_soup(property_url)
         if soup == None:
             sold = True
@@ -93,10 +92,9 @@ for property_id, property_url in url_list:
                 sold = False
         
         cursor.execute('''
-            UPDATE scraped_properties SET sold=?, tags=?,  mutation_date=? WHERE id=?
+            UPDATE scraped_properties SET sold=?, tags=? WHERE id=?
             ''', (sold,
                   tags,
-                  today_string,
                   property_id))
         conn.commit()
         processed_records += 1

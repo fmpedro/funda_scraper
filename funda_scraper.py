@@ -223,10 +223,6 @@ with open('scraped_data.pkl', 'wb') as file:
 	pickle.dump(results_array, file)
 
 
-today = datetime.date.today()
-today_string = today.strftime('%Y-%m-%d')
-
-
 # Create or connect to the database
 try:
     conn = sqlite3.connect("funda_properties.db")
@@ -256,6 +252,25 @@ try:
         )
     ''')
 
+    # Create table triggers
+    cursor.execute('''
+        CREATE TRIGGER IF NOT EXISTS set_creation_and_mutation_dates
+        AFTER INSERT ON scraped_properties
+        FOR EACH ROW
+        BEGIN
+            UPDATE scraped_properties SET creation_date = DATE('now'), mutation_date = DATE('now')
+            WHERE (id = NEW.id);
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS update_mutation_date
+        AFTER UPDATE ON scraped_properties
+        FOR EACH ROW
+        BEGIN
+            UPDATE scraped_properties SET mutation_date = DATE('now')
+            WHERE (id = NEW.id);
+        END;
+    ''')
+
     # Get list of IDs of properties in the database:
     cursor.execute("SELECT name || ',' || city AS name_city_key, sold FROM scraped_properties")
     name_city_list = {row[0]: row[1] for row in cursor.fetchall()}
@@ -271,7 +286,7 @@ try:
         # if property is already in the database:
         if key in name_city_list.keys() and name_city_list[key] == 0:
             cursor.execute('''
-                UPDATE scraped_properties SET price=?, area=?, num_of_rooms=?, energy_rating=?, url=?, tags=?, sold=?, mutation_date=? WHERE name=? AND city=?
+                UPDATE scraped_properties SET price=?, area=?, num_of_rooms=?, energy_rating=?, url=?, tags=?, sold=? WHERE name=? AND city=?
                 ''', (property_obj.price,
                       property_obj.area,
                       property_obj.num_of_rooms,
@@ -279,14 +294,13 @@ try:
                       property_obj.url,
                       property_obj.tags,
                       sold,
-                      today_string,
                       property_obj.name,
                       property_obj.city))
 
         # if it is a new property:
         else:
             cursor.execute('''
-                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, gemeente, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold, creation_date, mutation_date)
+                    INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, gemeente, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (property_obj.name,
                       property_obj.type,
@@ -302,9 +316,7 @@ try:
                       property_obj.url,
                       property_obj.estate_agent,
                       property_obj.tags,
-                      sold,
-                      today_string,
-                      today_string))
+                      sold))
 
     # Commit changes and close the connection
     conn.commit()
