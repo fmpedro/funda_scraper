@@ -81,141 +81,133 @@ results_array = set()
 
 ref_data = pd.read_csv('georef-netherlands-postcode-pc4.csv', sep='\t')
 
-
-# development_mode = False
-# if development_mode: # url list used for testing
-#     base_url_list = ['https://www.funda.nl/zoeken/koop?selected_area=%5B"hollum"%5D&object_type=%5B"house"%5D&sort="date_down"&search_result=']
-# else: # url list used in production
-#     base_url_list = [
-#         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-amsterdam,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
-#         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-utrecht,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
-#         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-alkmaar,10km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result=',
-#         'https://www.funda.nl/zoeken/koop?selected_area=%5B"gemeente-haarlem,5km"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&search_result='
-#         ]
-base_url = 'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="5"&search_result='
-
-
-try:
-    print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
-    logging.info(f'Funda scraping started (URL: {base_url})')
-
-    page_number = 0
-    max_pages = 666
-    carry_on = True
+base_url_list = [
+    'https://www.funda.nl/zoeken/koop?selected_area=%5B"nl"%5D&object_type=%5B"apartment","house"%5D&sort="date_down"&availability=%5B"available","negotiations","unavailable"%5D&publication_date="3"&search_result=',
+    ]
     
-    while carry_on and page_number <= max_pages-1:
-        page_number += 1
-        url = base_url + str(page_number)
+
+for base_url in base_url_list:
+    try:
+        print(f"Scraping started at {datetime.datetime.now()}. URL: {base_url}")
+        logging.info(f'Funda scraping started (URL: {base_url})')
+
+        page_number = 0
+        max_pages = 666
+        carry_on = True
         
-        search_result_items = scrape_page(url)
+        while carry_on and page_number <= max_pages-1:
+            page_number += 1
+            url = base_url + str(page_number)
+            
+            search_result_items = scrape_page(url)
 
-        if search_result_items == None:
-            continue
-        
-        if len(search_result_items) == 0:
-            carry_on = False
-        else:
-            print(page_number, end='\r')
-            for item in search_result_items:
-                # property name:
-                property_name = item.find("h2", {"data-test-id": "street-name-house-number"}).get_text().strip()
+            if search_result_items == None:
+                continue
+            
+            if len(search_result_items) == 0:
+                carry_on = False
+            else:
+                print(page_number, end='\r')
+                for item in search_result_items:
+                    # property name:
+                    property_name = item.find("h2", {"data-test-id": "street-name-house-number"}).get_text().strip()
 
-                # property type:
-                property_url = item.find("a").get("href")
-                if re.findall(r'/appartement-', property_url):
-                    property_type = "apartment"
-                elif re.findall(r'/huis-', property_url):
-                    property_type = "house"
-                else:
-                    property_type = "unknown"
-
-                # postal code:
-                postal_code_city = item.find("div", {"data-test-id": "postal-code-city"}).get_text().strip().split(' ',3)
-                postal_code_number = postal_code_city[0]
-                postal_code_letters = postal_code_city[1]
-                
-                # city
-                city = " ".join(postal_code_city[2:])
-                
-                # price:
-                price_sale_array = item.find("p", {"data-test-id": "price-sale"}).get_text().strip().split(' ',3)
-                try:
-                    price = float(price_sale_array[1].replace('.', ''))
-                except:
-                    price = None
-                
-                # url:
-                url_link = item.find("a")["href"].strip()
-                
-                # additional info:
-                additional_info = item.find("ul", {"class": "mt-1 flex h-6 min-w-0 flex-wrap space-x-3 overflow-hidden sm:space-x-4"})
-                aditional_sub_items = additional_info.find_all("li")
-                features = [sub_item.get_text().strip() for sub_item in aditional_sub_items]
-                
-                # area:
-                try:
-                    if "m²" in features[0]:
-                        area = float(features[0].replace(" m²", ""))
+                    # property type:
+                    property_url = item.find("a").get("href")
+                    if re.findall(r'/appartement-', property_url):
+                        property_type = "apartment"
+                    elif re.findall(r'/huis-', property_url):
+                        property_type = "house"
                     else:
-                        area = None
-                except:
-                    area = None
-                
-                # number of rooms:
-                try:
-                    if "m²" not in features[1]:
-                        num_of_rooms = int(features[1])
-                    else:
-                        if re.match("[A-Z]+", features[2]):
-                            num_of_rooms = None
+                        property_type = "unknown"
+
+                    # postal code:
+                    postal_code_city = item.find("div", {"data-test-id": "postal-code-city"}).get_text().strip().split(' ',3)
+                    postal_code_number = postal_code_city[0]
+                    postal_code_letters = postal_code_city[1]
+                    
+                    # city
+                    city = " ".join(postal_code_city[2:])
+                    
+                    # price:
+                    price_sale_array = item.find("p", {"data-test-id": "price-sale"}).get_text().strip().split(' ',3)
+                    try:
+                        price = float(price_sale_array[1].replace('.', ''))
+                    except:
+                        price = None
+                    
+                    # url:
+                    url_link = item.find("a")["href"].strip()
+                    
+                    # additional info:
+                    additional_info = item.find("ul", {"class": "mt-1 flex h-6 min-w-0 flex-wrap space-x-3 overflow-hidden sm:space-x-4"})
+                    aditional_sub_items = additional_info.find_all("li")
+                    features = [sub_item.get_text().strip() for sub_item in aditional_sub_items]
+                    
+                    # area:
+                    try:
+                        if "m²" in features[0]:
+                            area = float(features[0].replace(" m²", ""))
                         else:
-                            num_of_rooms = int(features[2])
-                except:
-                    num_of_rooms = None
-                
-                # energy rating:
-                try:
-                    if re.match("[A-Z]+", features[2]):
-                        energy_rating = features[2]
-                    else:
-                        energy_rating = features[3]
-                except:
-                    energy_rating = None
+                            area = None
+                    except:
+                        area = None
+                    
+                    # number of rooms:
+                    try:
+                        if "m²" not in features[1]:
+                            num_of_rooms = int(features[1])
+                        else:
+                            if re.match("[A-Z]+", features[2]):
+                                num_of_rooms = None
+                            else:
+                                num_of_rooms = int(features[2])
+                    except:
+                        num_of_rooms = None
+                    
+                    # energy rating:
+                    try:
+                        if re.match("[A-Z]+", features[2]):
+                            energy_rating = features[2]
+                        else:
+                            energy_rating = features[3]
+                    except:
+                        energy_rating = None
 
-                # estate agent
-                property_estate_agent = item.find("div", {"class": "mt-4 flex"}).get_text().strip()
+                    # estate agent
+                    property_estate_agent = item.find("div", {"class": "mt-4 flex"}).get_text().strip()
 
-                # tags:
-                ul_element = item.find('ul', class_='absolute left-2 top-2 flex w-56 flex-wrap')
-                li_elements = ul_element.find_all('li')
-                tags = ", ".join([li.get_text(strip=True) for li in li_elements])
+                    # tags:
+                    ul_element = item.find('ul', class_='absolute left-2 top-2 flex w-56 flex-wrap')
+                    li_elements = ul_element.find_all('li')
+                    tags = ", ".join([li.get_text(strip=True) for li in li_elements])
 
-                # append property listing to results array:
-                results_array.add(PropertyListing(
-                    name=property_name,
-                    type=property_type,
-                    postal_code_number=postal_code_number,
-                    postal_code_letters=postal_code_letters,
-                    city=city,
-                    province=get_zipcode_info(postal_code_number, ref_data)['province'],
-                    gemeente=get_zipcode_info(postal_code_number, ref_data)['gemeente'],
-                    price=price,
-                    area=area,
-                    num_of_rooms=num_of_rooms,
-                    energy_rating=energy_rating,
-                    url=url_link,
-                    features=features,
-                    estate_agent=property_estate_agent,
-                    tags=tags              
-                ))
-            time.sleep(10)
+                    # append property listing to results array:
+                    results_array.add(PropertyListing(
+                        name=property_name,
+                        type=property_type,
+                        postal_code_number=postal_code_number,
+                        postal_code_letters=postal_code_letters,
+                        city=city,
+                        province=get_zipcode_info(postal_code_number, ref_data)['province'],
+                        gemeente=get_zipcode_info(postal_code_number, ref_data)['gemeente'],
+                        price=price,
+                        area=area,
+                        num_of_rooms=num_of_rooms,
+                        energy_rating=energy_rating,
+                        url=url_link,
+                        features=features,
+                        estate_agent=property_estate_agent,
+                        tags=tags              
+                    ))
+                time.sleep(10)
 
-    logging.info(f'Scraping completed. {page_number} result page(s) processed.)')
+        logging.info(f'Scraping completed. {page_number} result page(s) processed.)')
 
-except Exception as e:
-    print(f"Error during operation!")
-    print(page_number, property_name, property_url, item)
-    logging.error(f'Error during operation on page {page_number}: {e}')
+    except Exception as e:
+        print(f"Error during operation!")
+        print(page_number, property_name, property_url, item)
+        logging.error(f'Error during operation on page {page_number}: {e}')
 
 
 # Backup scraped data
@@ -229,7 +221,7 @@ try:
     cursor = conn.cursor()
 
     # Define database table
-    cursor.execute('''
+    cursor.executescript("""
         CREATE TABLE IF NOT EXISTS scraped_properties (
             id INTEGER PRIMARY KEY,
             name TEXT,
@@ -249,11 +241,8 @@ try:
             tags TEXT,
             creation_date DATE DEFAULT CURRENT_DATE,
             mutation_date DATE DEFAULT CURRENT_DATE
-        )
-    ''')
+        );
 
-    # Create table triggers
-    cursor.execute('''
         CREATE TRIGGER IF NOT EXISTS set_creation_and_mutation_dates
         AFTER INSERT ON scraped_properties
         FOR EACH ROW
@@ -269,7 +258,8 @@ try:
             UPDATE scraped_properties SET mutation_date = DATE('now')
             WHERE (id = NEW.id);
         END;
-    ''')
+    """)
+
 
     # Get list of IDs of properties in the database:
     cursor.execute("SELECT name || ',' || city AS name_city_key, sold FROM scraped_properties")
@@ -301,7 +291,7 @@ try:
         else:
             cursor.execute('''
                     INSERT INTO scraped_properties (name, type, postal_code_number, postal_code_letters, city, province, gemeente, price, area, num_of_rooms, energy_rating, url, estate_agent, tags, sold)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (property_obj.name,
                       property_obj.type,
                       property_obj.postal_code_number,
